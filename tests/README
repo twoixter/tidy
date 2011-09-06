@@ -1,0 +1,8 @@
+This is not the usual "tests" subdirectory you expect to find. :-)
+
+Inside "tests" there is only text files intended to check "tidy" against.
+
+You can use them like this:
+
+  $ cat tests/index.html | src/tidy
+

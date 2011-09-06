@@ -23,14 +23,4 @@
  *
  */
 
-#include <string>
-#include <iostream>
-
 #include "html_parser.h"
-
-using namespace std;
-
-int main(int argv, char *argc[])
-{
-	return 0;
-}

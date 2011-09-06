@@ -23,14 +23,7 @@
  *
  */
 
-#include <string>
-#include <iostream>
+#ifndef TIDY_HTMLPARSER_H
+#define TIDY_HTMLPARSER_H
 
-#include "html_parser.h"
-
-using namespace std;
-
-int main(int argv, char *argc[])
-{
-	return 0;
-}
+#endif

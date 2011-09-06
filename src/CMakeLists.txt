@@ -1,7 +1,5 @@
-cmake_minimum_required(VERSION 2.8)
-project(tidy)
-
-include_directories(${CMAKE_SOURCE_PATH})
 find_package(libXml2)
-add_executable(tidy tidy.cpp)
+
+include_directories(${CMAKE_SOURCE_PATH} ${LIBXML2_INCLUDE_DIR})
+add_executable(tidy tidy.cpp html_parser.cpp)
 target_link_libraries(tidy ${LIBXML2_LIBRARIES})
