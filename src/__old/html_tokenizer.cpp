@@ -1,8 +1,6 @@
 /*
  * Copyright (c) 2011 Jose Miguel Pérez, Twoixter S.L.
  *
- * Standard disclaimer follows:
- *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
  * in the Software without restriction, including without limitation the rights
@@ -23,4 +21,60 @@
  *
  */
 
-#include "html_parser.h"
+#include "html_tokenizer.h"
+#include "html_escaped_string.h"
+
+using namespace std;
+
+/*
+ * Reads (or tries to) a full token from the input stream.
+ *
+ * This could be an HTML tag or other kind of "nodes", like text nodes or
+ * CDATA sections, etc.
+ */
+istream &htmlToken::read(istream &in)
+{
+	unsigned char c = '\0';
+
+	m_content.clear();
+
+	in >> skipws >> c;
+
+	if (c == '<') {
+		return read_tag(in);
+	} else {
+		m_content = c;
+		return read_text(in);
+	}
+}
+
+
+istream &htmlToken::read_text(istream &in)
+{
+	unsigned char c = '\0';
+
+	cout << "--- TEXT STATE ---" << endl;
+	in >> noskipws;
+
+	while ((in >> c) && (c != '<')) {
+		m_content.push_back(c);
+	}
+	return in;
+}
+
+istream &htmlToken::read_tag(istream &in)
+{
+	unsigned char c = '\0';
+
+	cout << "--- TAG STATE ---" << endl;
+}
+
+
+/*
+ * Some debugging aids...
+ */
+void htmlToken::debug()
+{
+	cout << "----------------------------------------" << endl;
+	cout << "Type: " << m_type << endl;
+}

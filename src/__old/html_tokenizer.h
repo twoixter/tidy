@@ -1,8 +1,6 @@
 /*
  * Copyright (c) 2011 Jose Miguel Pérez, Twoixter S.L.
  *
- * Standard disclaimer follows:
- *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
  * in the Software without restriction, including without limitation the rights
@@ -23,19 +21,42 @@
  *
  */
 
-#include <string>
-#include <iostream>
-#include <sstream>
+#ifndef TIDY_HTMLTOKENIZER_H
+#define TIDY_HTMLTOKENIZER_H
 
-#include "html_stream_parser.h"
+#include <iostream>
 
 using namespace std;
 
-int main(int argv, char *argc[])
-{
-    htmlParser p;
-    
-    cin >> p;
+class htmlToken {
+public:
+	typedef enum {
+		text,
+		tag,
+		doctype,
+		cdata
+	} tokenType_t;
 
-	return 0;
+	htmlToken() : m_type(text)
+	{
+	}
+
+	void debug();
+
+private:
+	tokenType_t m_type;
+	std::string m_content;
+	
+	istream &read(istream &in);
+	istream &read_tag(istream &in);
+	istream &read_text(istream &in);
+
+	friend istream & operator >> (istream &, htmlToken &);
+};
+
+inline istream & operator >> (istream &in, htmlToken &tok)
+{
+	return tok.read(in);
 }
+
+#endif	// TIDY_HTMLTOKENIZER_H

@@ -1,8 +1,6 @@
 /*
  * Copyright (c) 2011 Jose Miguel Pérez, Twoixter S.L.
  *
- * Standard disclaimer follows:
- *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
  * in the Software without restriction, including without limitation the rights
@@ -23,19 +21,29 @@
  *
  */
 
-#include <string>
+#include "html_token.h"
+
 #include <iostream>
-#include <sstream>
 
-#include "html_stream_parser.h"
-
-using namespace std;
-
-int main(int argv, char *argc[])
+ostream &htmlToken::serialize(ostream &_out) const
 {
-    htmlParser p;
-    
-    cin >> p;
+    switch (m_type) {
+        case text:
+            _out << "[" << content() << "]" << endl;
+            break;
 
-	return 0;
+        case tag:
+            _out << "<" << name << ">" << endl;
+            break;
+
+        case doctype:
+            _out << "<!DOCTYPE " << name << ">" << endl;
+            break;
+
+        case comment:
+            _out << "<!-- " << content() << " -->" << endl;
+            break;
+        
+    }
+    return _out;
 }

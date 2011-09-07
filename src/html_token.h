@@ -1,8 +1,6 @@
 /*
  * Copyright (c) 2011 Jose Miguel Pérez, Twoixter S.L.
  *
- * Standard disclaimer follows:
- *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
  * in the Software without restriction, including without limitation the rights
@@ -23,19 +21,53 @@
  *
  */
 
-#include <string>
-#include <iostream>
-#include <sstream>
+#ifndef TIDY_HTMLTOKEN_H
+#define TIDY_HTMLTOKEN_H
 
-#include "html_stream_parser.h"
+#include <string>
 
 using namespace std;
 
-int main(int argv, char *argc[])
-{
-    htmlParser p;
-    
-    cin >> p;
+class htmlToken {
+public:
+    typedef enum {
+        text,
+        tag,
+        doctype,
+        comment
+    } tokenType_t;
 
-	return 0;
+    htmlToken(tokenType_t _t = text)
+        : m_type(_t)
+    {}
+
+    htmlToken(const string &_str, tokenType_t _t = text)
+        : m_type(_t)
+        , name(_str)
+    {}
+
+    // Yep... This structure sounds silly, let's see if I come up with a better one. :-D
+    string name;
+    string extra;
+    const string content() const
+    {
+        return name;
+    }
+
+    tokenType_t type()
+    {
+        return m_type;
+    }
+
+    ostream &serialize(ostream &_out) const;
+
+private:
+    tokenType_t m_type;
+};
+
+inline ostream & operator << (ostream &_out, const htmlToken &_tok)
+{
+    return _tok.serialize(_out);
 }
+
+#endif  // TIDY_HTMLTOKEN_H
