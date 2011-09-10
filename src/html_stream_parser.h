@@ -27,6 +27,7 @@
 #define HTML_INVALID_CHAR    '?'
 
 #include "html_sax_emitter.h"
+#include "ncstring.h"
 #include <iostream>
 
 using namespace std;
@@ -39,15 +40,11 @@ public:
         , m_currentStream(NULL)
     {}
 
-    inline void parse(istream &in)
-    {
-        m_currentStream = &in;
-        startDocument();
-        while (in >> m_current) processCurrent();
-        endDocument();
-    }
+    void parse(istream &in);
 
-    // Events from the SAX Emitter
+private:
+
+    // Events for the SAX Emitter
     virtual void startDocument()
     {
         cout << "**** STARTING DOCUMENT PARSING ****" << endl;
@@ -74,15 +71,19 @@ public:
     }
 
 
+    void emitTag();
+    void emitAttribute();
 
-private:
     typedef void (htmlParser::*stateFunc_t)();
     stateFunc_t  m_state;
 
     istream     *m_currentStream;
     char         m_current;
 
-    string       m_characterContent;
+    ncstring     m_characterContent;
+    ncstring     m_currentTagName;
+    ncstring     m_currentAttrName;
+    ncstring     m_currentAttrValue;
     htmlToken    m_token;
 
     inline void changeState(stateFunc_t newState)
@@ -90,26 +91,31 @@ private:
         m_state = newState;
     }
 
-    inline void processCurrent()
+    inline void process()
     {
         (this->*m_state)();
     }
 
-    inline void emitCharacter(char _c = 0, bool _clear = false)
+    inline void addToContent(char _c = 0, bool _clear = false)
     {
-        _clear ? m_characterContent.clear()
-               : m_characterContent.push_back(_c ? _c : m_current);
+        if (_clear) m_characterContent.clear();
+        m_characterContent.push_back(_c ? _c : m_current);
     }
 
     // WARNING: Curves ahead... :-)
-    inline string peekNext(int _count)
+    inline ncstring peekNext(int _count)
     {
-        char *_str = new char(_count);
+        char *_str = new char[_count];
         m_currentStream->read(_str, _count);
-        for (int i=_count-1; i>=0; i--) {
-            m_currentStream->putback(_str[i]);
-        }
-        return string(_str, _count);
+        for (int i=_count-1; i>=0; i--) m_currentStream->putback(_str[i]);
+        ncstring _temp(_str, _count);
+        delete _str;
+        return _temp;
+    }
+
+    inline void consume(int _count)
+    {
+        m_currentStream->ignore(_count);
     }
 
     void stateData();

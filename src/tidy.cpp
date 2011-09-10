@@ -34,7 +34,6 @@ using namespace std;
 int main(int argv, char *argc[])
 {
     htmlParser p;
-    
     cin >> p;
 
 	return 0;

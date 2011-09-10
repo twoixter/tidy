@@ -25,25 +25,39 @@
 
 #include <iostream>
 
-ostream &htmlToken::serialize(ostream &_out) const
+ostream &htmlToken::display(ostream &_out) const
 {
     switch (m_type) {
         case text:
-            _out << "[" << content() << "]" << endl;
+            _out << "[" << data() << "]" << endl;
             break;
 
         case tag:
-            _out << "<" << name << ">" << endl;
+            _out << "<" << name() << " ";
+            if (m_attrs.size()) {
+                for (htmlAttributes::const_iterator iter = m_attrs.begin()
+                    ; iter != m_attrs.end()
+                    ; ++iter)
+                {
+                    _out << iter->first << "=\"" << iter->second << "\" ";
+                }
+            }
+
+            if (isSelfClose()) _out << "/";
+            _out << ">" << endl;
             break;
 
         case doctype:
-            _out << "<!DOCTYPE " << name << ">" << endl;
+            _out << "<!DOCTYPE " << data() << ">" << endl;
             break;
 
         case comment:
-            _out << "<!-- " << content() << " -->" << endl;
+            _out << "<!-- " << data() << " -->" << endl;
             break;
-        
+
+        case cdata:
+            _out << "<![CDATA[" << data() << "]]>" << endl;
+            break;
     }
     return _out;
 }
