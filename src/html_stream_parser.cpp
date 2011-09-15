@@ -27,48 +27,91 @@
 
 using namespace std;
 
+#define DEBUG
+
 //---------------------------------------------------------------------------
 void htmlParser::parse(istream &in)
 {
     m_currentStream = &in;
     startDocument();
-    while (in >> m_current) process();
+    while (in >> m_current) (this->*m_state)();
     endDocument();
 }
 
 //---------------------------------------------------------------------------
 void htmlParser::emitTag()
 {
-    if (m_token.type() == htmlToken::tag) {
-        m_token.setName(m_currentTagName);
-    }
-    
-    if (!m_currentAttrName.empty()) {
-        emitAttribute();
-    }
+    if (!m_currentTagName.empty()) {
+        m_token = htmlToken(m_currentTagName, htmlToken::tag, m_currentTagKind);
+        m_token.setAttributes(m_currentAttributes);
+        m_currentTagName.clear();
+        m_currentAttributes.clear();
 
-    if (m_token.isOpen())  openingTag(m_token);
-    if (m_token.isClose()) closingTag(m_token);
+        switch (m_token.kind()) {
+            case htmlToken::open:
+                openingTag(m_token);
+                break;
 
-    m_currentTagName.clear();
+            case htmlToken::close:
+                closingTag(m_token);
+                break;
+
+            case htmlToken::selfClose:
+                openingTag(m_token);
+                closingTag(m_token);
+                break;
+        }
+
+#ifdef DEBUG
+    cout << "Emiting tag.";
+    cout << " currentTagName = '" << m_currentTagName << "'";
+    cout << " currentTagKind = '" << m_currentTagKind << "'";
+    cout << " isOpen = '" << m_token.isOpen() << "'";
+    cout << " isClose = '" << m_token.isClose() << "'";
+    cout << " isSelfClose = '" << m_token.isSelfClose() << "'";
+    cout << endl;
+#endif
+
+    }
+}
+
+//---------------------------------------------------------------------------
+void htmlParser::emitDoctype()
+{
+    m_token = htmlToken("doctype", htmlToken::doctype, htmlToken::selfClose);
+    openingTag(m_token);
+    closingTag(m_token);
 }
 
 //---------------------------------------------------------------------------
 void htmlParser::emitAttribute()
 {
-    m_token.addAttribute(m_currentAttrName, m_currentAttrValue);
+    if (!m_currentAttrName.empty()) {
+        m_currentAttributes[m_currentAttrName] = m_currentAttrValue;
+        m_currentAttrName.clear();
+        m_currentAttrValue.clear();
+    }
+}
 
-    m_currentAttrName.clear();
-    m_currentAttrValue.clear();
+//---------------------------------------------------------------------------
+void htmlParser::emitAttributeWithoutValue()
+{
+    if (!m_currentAttrName.empty()) {
+        m_currentAttributes[m_currentAttrName] = m_currentAttrName;
+        m_currentAttrName.clear();
+        m_currentAttrValue.clear();
+    }
 }
 
 //---------------------------------------------------------------------------
 //! OK
 void htmlParser::stateData()
 {
+#ifdef DEBUG
     cout << "STATE: stateData" << endl;
     cout << "CURRENT CHAR: " << m_current << endl;
-    
+#endif
+
     switch (m_current) {
         case '&':
             changeState(&htmlParser::stateCharacterReferenceInData);
@@ -90,8 +133,10 @@ void htmlParser::stateData()
 //! PARTIAL, TODO
 void htmlParser::stateCharacterReferenceInData()
 {
+#ifdef DEBUG
     cout << "STATE: stateCharacterReferenceInData" << endl;
     cout << "CURRENT CHAR: " << m_current << endl;
+#endif
 
     // TODO: Correctly parse a character entity reference.
     // For now, just emit the ampersand token and swith to the Data state
@@ -129,12 +174,13 @@ void htmlParser::statePlainText()
 //! OK
 void htmlParser::stateTagOpen()
 {
+#ifdef DEBUG
     cout << "STATE: stateTagOpen" << endl;
     cout << "CURRENT CHAR: " << m_current << endl;
+#endif
 
     if (::isalpha(m_current)) {
         m_currentTagName = ::tolower(m_current);
-        m_token = htmlToken(htmlToken::tag);
 
         changeState(&htmlParser::stateTagName);
         return;
@@ -157,8 +203,7 @@ void htmlParser::stateTagOpen()
         default:
             // TODO: Should be PARSE ERROR.
             addToContent('<');
-            changeState(&htmlParser::stateData);
-            process();
+            changeStateReconsuming(&htmlParser::stateData);
             break;
     }
 }
@@ -166,13 +211,14 @@ void htmlParser::stateTagOpen()
 //---------------------------------------------------------------------------
 void htmlParser::stateEndTagOpen()
 {
+#ifdef DEBUG
     cout << "STATE: stateEndTagOpen" << endl;
     cout << "CURRENT CHAR: " << m_current << endl;
+#endif
 
     if (::isalpha(m_current)) {
         m_currentTagName = ::tolower(m_current);
-        m_token = htmlToken(htmlToken::tag);
-        m_token.setClose(true);
+        m_currentTagKind = htmlToken::close;
 
         changeState(&htmlParser::stateTagName);
         return;
@@ -182,6 +228,7 @@ void htmlParser::stateEndTagOpen()
         case '>':
             changeState(&htmlParser::stateData);
             break;
+
         default:
             changeState(&htmlParser::stateBogusComment);
             break;
@@ -192,8 +239,10 @@ void htmlParser::stateEndTagOpen()
 //! OK
 void htmlParser::stateTagName()
 {
+#ifdef DEBUG
     cout << "STATE: stateTagName" << endl;
     cout << "CURRENT CHAR: " << m_current << endl;
+#endif
 
     if (::isspace(m_current)) {
         changeState(&htmlParser::stateBeforeAttributeName);
@@ -340,8 +389,10 @@ void htmlParser::stateScriptDataDoubleEscapeEnd()
 //! OK
 void htmlParser::stateBeforeAttributeName()
 {
+#ifdef DEBUG
     cout << "STATE: stateBeforeAttributeName" << endl;
     cout << "CURRENT CHAR: " << m_current << endl;
+#endif
 
     // Ignore whitespace
     if (::isspace(m_current)) return;
@@ -386,8 +437,10 @@ void htmlParser::stateBeforeAttributeName()
 //! OK
 void htmlParser::stateAttributeName()
 {
+#ifdef DEBUG
     cout << "STATE: stateAttributeName" << endl;
     cout << "CURRENT CHAR: " << m_current << endl;
+#endif
 
     if (::isspace(m_current)) {
         changeState(&htmlParser::stateAfterAttributeName);
@@ -401,6 +454,7 @@ void htmlParser::stateAttributeName()
 
     switch (m_current) {
         case '/':
+            emitAttributeWithoutValue();
             changeState(&htmlParser::stateSelfClosingStartTag);
             break;
 
@@ -409,6 +463,7 @@ void htmlParser::stateAttributeName()
             break;
 
         case '>':
+            emitAttributeWithoutValue();
             emitTag();
             changeState(&htmlParser::stateData);
             break;
@@ -433,20 +488,23 @@ void htmlParser::stateAttributeName()
 //! OK
 void htmlParser::stateAfterAttributeName()
 {
+#ifdef DEBUG
     cout << "STATE: stateAttributeName" << endl;
     cout << "CURRENT CHAR: " << m_current << endl;
+#endif
 
     // Ignore whitespace
     if (::isspace(m_current)) return;
 
     if (::isalpha(m_current)) {
-        emitAttribute();
+        emitAttributeWithoutValue();
         m_currentAttrName = ::tolower(m_current);
         return;
     }
 
     switch (m_current) {
         case '/':
+            emitAttributeWithoutValue();
             changeState(&htmlParser::stateSelfClosingStartTag);
             break;
 
@@ -455,12 +513,13 @@ void htmlParser::stateAfterAttributeName()
             break;
 
         case '>':
+            emitAttributeWithoutValue();
             emitTag();
             changeState(&htmlParser::stateData);
             break;
 
         case '\0':
-            emitAttribute();
+            emitAttributeWithoutValue();
             m_currentAttrName = HTML_INVALID_CHAR;
             break;
 
@@ -470,7 +529,7 @@ void htmlParser::stateAfterAttributeName()
             // TODO: This should be a Parse error as the W3C spec...
 
         default:
-            emitAttribute();
+            emitAttributeWithoutValue();
             m_currentAttrName = m_current;
             changeState(&htmlParser::stateAttributeName);
             break;
@@ -481,8 +540,10 @@ void htmlParser::stateAfterAttributeName()
 //! OK
 void htmlParser::stateBeforeAttributeValue()
 {
+#ifdef DEBUG
     cout << "STATE: stateBeforeAttributeValue" << endl;
     cout << "CURRENT CHAR: " << m_current << endl;
+#endif
 
     // Ignore whitespace
     if (::isspace(m_current)) return;
@@ -502,12 +563,12 @@ void htmlParser::stateBeforeAttributeValue()
             break;
 
         case '&':
-            changeState(&htmlParser::stateAttributeValueUnquoted);
-            process();
+            changeStateReconsuming(&htmlParser::stateAttributeValueUnquoted);
             break;
 
         case '>':
             // TODO: Should be parse error
+            emitAttributeWithoutValue();
             emitTag();
             changeState(&htmlParser::stateData);
             break;
@@ -528,8 +589,10 @@ void htmlParser::stateBeforeAttributeValue()
 //! OK
 void htmlParser::stateAttributeValueDoubleQuoted()
 {
+#ifdef DEBUG
     cout << "STATE: stateAttributeValueDoubleQuoted" << endl;
     cout << "CURRENT CHAR: " << m_current << endl;
+#endif
 
     switch (m_current) {
         case '"':
@@ -555,8 +618,10 @@ void htmlParser::stateAttributeValueDoubleQuoted()
 //---------------------------------------------------------------------------
 void htmlParser::stateAttributeValueSingleQuoted()
 {
+#ifdef DEBUG
     cout << "STATE: stateAttributeValueSingleQuoted" << endl;
     cout << "CURRENT CHAR: " << m_current << endl;
+#endif
 
     switch (m_current) {
         case '\'':
@@ -582,8 +647,10 @@ void htmlParser::stateAttributeValueSingleQuoted()
 //---------------------------------------------------------------------------
 void htmlParser::stateAttributeValueUnquoted()
 {
+#ifdef DEBUG
     cout << "STATE: stateAttributeValueUnquoted" << endl;
     cout << "CURRENT CHAR: " << m_current << endl;
+#endif
 
     if (::isspace(m_current)) {
         emitAttribute();
@@ -593,6 +660,7 @@ void htmlParser::stateAttributeValueUnquoted()
 
     switch (m_current) {
         case '>':
+            emitAttribute();
             emitTag();
             changeState(&htmlParser::stateData);
             break;
@@ -629,8 +697,10 @@ void htmlParser::stateCharacterReferenceInAttributeValue()
 //! OK
 void htmlParser::stateAfterAttributeValueQuoted()
 {
+#ifdef DEBUG
     cout << "STATE: stateAfterAttributeValueQuoted" << endl;
     cout << "CURRENT CHAR: " << m_current << endl;
+#endif
 
     if (::isspace(m_current)) {
         emitAttribute();
@@ -640,18 +710,19 @@ void htmlParser::stateAfterAttributeValueQuoted()
     
     switch (m_current) {
         case '/':
+            emitAttribute();
             changeState(&htmlParser::stateSelfClosingStartTag);
             break;
         
         case '>':
+            emitAttribute();
             emitTag();
             changeState(&htmlParser::stateData);
             break;
         
         default:
             emitAttribute();
-            changeState(&htmlParser::stateBeforeAttributeName);
-            process();
+            changeStateReconsuming(&htmlParser::stateBeforeAttributeName);
             break;
     }
 }
@@ -660,20 +731,20 @@ void htmlParser::stateAfterAttributeValueQuoted()
 //! OK
 void htmlParser::stateSelfClosingStartTag()
 {
+#ifdef DEBUG
     cout << "STATE: stateSelfClosingStartTag" << endl;
     cout << "CURRENT CHAR: " << m_current << endl;
+#endif
 
     switch (m_current) {
         case '>':
-            m_token.setClose(true);
+            m_currentTagKind = htmlToken::selfClose;
             emitTag();
-
             changeState(&htmlParser::stateData);
             break;
 
         default:
-            changeState(&htmlParser::stateBeforeAttributeName);
-            process();
+            changeStateReconsuming(&htmlParser::stateBeforeAttributeName);
             break;
     }
 }
@@ -687,8 +758,10 @@ void htmlParser::stateBogusComment()
 //! OK
 void htmlParser::stateMarkupDeclarationOpen()
 {
+#ifdef DEBUG
     cout << "STATE: stateMarkupDeclarationOpen" << endl;
     cout << "CURRENT CHAR: " << m_current << endl;
+#endif
 
     switch (::tolower(m_current)) {
         case '-':
@@ -703,7 +776,6 @@ void htmlParser::stateMarkupDeclarationOpen()
         case 'd':
             if (peekNext(6) == "octype") {
                 consume(6);
-                m_token = htmlToken(htmlToken::doctype);
                 changeState(&htmlParser::stateDOCTYPE);
                 return;
             }
@@ -715,7 +787,6 @@ void htmlParser::stateMarkupDeclarationOpen()
             // Hopefully, this will be catched by the SAX parser, since we
             // are now dealing with pure tokens, not building a DOM tree.
             if (peekNext(6) == "CDATA[") {
-                m_token = htmlToken(htmlToken::cdata);
                 changeState(&htmlParser::stateCDATASection);
                 return;
             }
@@ -760,8 +831,10 @@ void htmlParser::stateCommentEndBang()
 //! OK
 void htmlParser::stateDOCTYPE()
 {
+#ifdef DEBUG
     cout << "STATE: stateDOCTYPE" << endl;
     cout << "CURRENT CHAR: " << m_current << endl;
+#endif
 
     // We are going to the next state anyway, but if we have a non-space
     // character, we need to put it back into the stream or reprocess the
@@ -771,24 +844,24 @@ void htmlParser::stateDOCTYPE()
     // an EOF character into account which we don't have to here.
     changeState(&htmlParser::stateBeforeDOCTYPEName);
 
-    if (!::isspace(m_current)) {
-        process();
-    }
+    if (!::isspace(m_current)) reconsume();
 }
 
 //---------------------------------------------------------------------------
 //! OK
 void htmlParser::stateBeforeDOCTYPEName()
 {
+#ifdef DEBUG
     cout << "STATE: stateBeforeDOCTYPEName" << endl;
     cout << "CURRENT CHAR: " << m_current << endl;
+#endif
 
     // Ignore whitespace
     if (::isspace(m_current)) return;
 
     if (m_current == '>') {
         // TODO: Emit the htmlToken as a quircks-mode empty doctype and raising an error.
-        emitTag();
+        emitDoctype();
         changeState(&htmlParser::stateData);
     } else {
         // Ignoring the DOCTYPE declaration
@@ -801,8 +874,10 @@ void htmlParser::stateBeforeDOCTYPEName()
 //! OK
 void htmlParser::stateDOCTYPEName()
 {
+#ifdef DEBUG
     cout << "STATE: stateDOCTYPEName" << endl;
     cout << "CURRENT CHAR: " << m_current << endl;
+#endif
 
     if (::isspace(m_current)) {
         changeState(&htmlParser::stateAfterDOCTYPEName);
@@ -811,8 +886,7 @@ void htmlParser::stateDOCTYPEName()
     
     if (m_current == '>') {
         // TODO: Emit the htmlToken as a quircks-mode DOCTYPE
-        emitTag();
-
+        emitDoctype();
         changeState(&htmlParser::stateData);
         return;
     }
@@ -824,15 +898,16 @@ void htmlParser::stateDOCTYPEName()
 //---------------------------------------------------------------------------
 void htmlParser::stateAfterDOCTYPEName()
 {
+#ifdef DEBUG
     cout << "STATE: stateAfterDOCTYPEName" << endl;
     cout << "CURRENT CHAR: " << m_current << endl;
+#endif
 
     // Ignore whitespace
     if (::isspace(m_current)) return;
 
     if (m_current == '>') {
-        emitTag();
-
+        emitDoctype();
         changeState(&htmlParser::stateData);
         return;
     }

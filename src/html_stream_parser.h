@@ -38,6 +38,7 @@ public:
     htmlParser()
         : m_state(&htmlParser::stateData)
         , m_currentStream(NULL)
+        , m_currentTagKind(htmlToken::open)
     {}
 
     void parse(istream &in);
@@ -50,19 +51,19 @@ private:
         cout << "**** STARTING DOCUMENT PARSING ****" << endl;
     }
 
-    virtual void openingTag(const htmlToken &_token)
-    {
-        cout << _token << endl;
-    }
-
     virtual void textNode(const htmlToken &_token)
     {
         cout << _token << endl;
     }
 
+    virtual void openingTag(const htmlToken &_token)
+    {
+        cout << ">> " << _token << endl;
+    }
+
     virtual void closingTag(const htmlToken &_token)
     {
-        cout << _token << endl;
+        cout << "<< " << _token << endl;
     }
 
     virtual void endDocument()
@@ -70,9 +71,11 @@ private:
         cout << "**** CLOSING DOCUMENT PARSING ****" << endl;
     }
 
-
     void emitTag();
+    void emitDoctype();
     void emitAttribute();
+    void emitAttributeWithoutValue();
+    void emitTextContent();
 
     typedef void (htmlParser::*stateFunc_t)();
     stateFunc_t  m_state;
@@ -84,16 +87,20 @@ private:
     ncstring     m_currentTagName;
     ncstring     m_currentAttrName;
     ncstring     m_currentAttrValue;
+
     htmlToken    m_token;
+    htmlToken::tokenKind m_currentTagKind;
+    htmlToken::htmlAttributes m_currentAttributes;
 
     inline void changeState(stateFunc_t newState)
     {
         m_state = newState;
     }
 
-    inline void process()
+    inline void changeStateReconsuming(stateFunc_t newState)
     {
-        (this->*m_state)();
+        changeState(newState);
+        reconsume();
     }
 
     inline void addToContent(char _c = 0, bool _clear = false)
@@ -116,6 +123,12 @@ private:
     inline void consume(int _count)
     {
         m_currentStream->ignore(_count);
+    }
+
+    inline void reconsume()
+    {
+        if (m_current) m_currentStream->putback(m_current);
+        m_current = '\0';
     }
 
     void stateData();

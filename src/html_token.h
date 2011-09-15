@@ -29,34 +29,26 @@
 
 using namespace std;
 
-typedef map<ncstring, ncstring> htmlAttributes;
 
 class htmlToken {
 public:
+    enum tokenType { text, tag, doctype, cdata, comment };
+    enum tokenKind { open, close, selfClose };
+    typedef map<ncstring, ncstring> htmlAttributes;
 
-    typedef enum {
-        text,
-        tag,
-        doctype,
-        cdata,
-        comment
-    } tokenType_t;
-
-    htmlToken(tokenType_t _t = text)
+    htmlToken(tokenType _t = text)
         : m_type(_t)
-        , m_isOpen(true)
-        , m_isClose(false)
+        , m_kind(open)
     {}
 
-    htmlToken(const ncstring &_str, tokenType_t _t = text)
+    htmlToken(const ncstring &_str, tokenType _t = text, tokenKind _k = open)
         : m_type(_t)
+        , m_kind(_k)
         , m_data(_str)
-        , m_isOpen(true)
-        , m_isClose(false)
     {}
 
-
-    tokenType_t type() const { return m_type; }
+    tokenType type() const { return m_type; }
+    tokenKind kind() const { return m_kind; }
 
     const ncstring &name() const
     {
@@ -78,12 +70,9 @@ public:
         m_data.assign(_name.begin(), _name.end());
     }
 
-    void setClose(bool _isClose = true) { m_isClose = _isClose; }
-    void setOpen(bool _isOpen = true) { m_isOpen = _isOpen; }
-
-    bool isClose() const { return m_isClose; }
-    bool isOpen() const  { return m_isOpen; }
-    bool isSelfClose() const { return m_isOpen && m_isClose; }
+    bool isClose() const     { return m_kind == close; }
+    bool isOpen() const      { return m_kind == open; }
+    bool isSelfClose() const { return m_kind == selfClose; }
 
     void addData(char _c)
     {
@@ -91,23 +80,28 @@ public:
     }
 
     template <typename _T>
-    void addData(const _T &_data)
+    inline void addData(const _T &_data)
     {
         m_data.append(_data.begin(), _data.end());
     }
 
-    void addAttribute(const ncstring &name, const ncstring &value)
+    inline void addAttribute(const ncstring &name, const ncstring &value)
     {
         m_attrs[name] = value;
+    }
+
+    inline void setAttributes(const htmlAttributes &_attr)
+    {
+        m_attrs = _attr;
     }
 
     ostream &display(ostream &_out) const;
 
 private:
-    tokenType_t m_type;
+    tokenType m_type;
+    tokenKind m_kind;
     ncstring m_data;
     htmlAttributes m_attrs;
-    bool m_isOpen, m_isClose;
 
     mutable ncstring m_dummy;
 };

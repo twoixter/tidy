@@ -29,34 +29,36 @@ ostream &htmlToken::display(ostream &_out) const
 {
     switch (m_type) {
         case text:
-            _out << "[" << data() << "]" << endl;
+            _out << "[" << data() << "]";
             break;
 
         case tag:
-            _out << "<" << name() << " ";
+            _out << "<";
+            if (isClose()) _out << "/";
+            _out << name();
             if (m_attrs.size()) {
                 for (htmlAttributes::const_iterator iter = m_attrs.begin()
                     ; iter != m_attrs.end()
                     ; ++iter)
                 {
-                    _out << iter->first << "=\"" << iter->second << "\" ";
+                    _out << " " << iter->first << "=\"" << iter->second << "\"";
                 }
             }
 
             if (isSelfClose()) _out << "/";
-            _out << ">" << endl;
+            _out << ">";
             break;
 
         case doctype:
-            _out << "<!DOCTYPE " << data() << ">" << endl;
+            _out << "<!DOCTYPE " << data() << ">";
             break;
 
         case comment:
-            _out << "<!-- " << data() << " -->" << endl;
+            _out << "<!-- " << data() << " -->";
             break;
 
         case cdata:
-            _out << "<![CDATA[" << data() << "]]>" << endl;
+            _out << "<![CDATA[" << data() << "]]>";
             break;
     }
     return _out;
