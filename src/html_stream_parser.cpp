@@ -27,7 +27,7 @@
 
 using namespace std;
 
-#define DEBUG
+// #define DEBUG
 
 //---------------------------------------------------------------------------
 void htmlParser::parse(istream &in)
@@ -39,8 +39,20 @@ void htmlParser::parse(istream &in)
 }
 
 //---------------------------------------------------------------------------
+void htmlParser::emitText()
+{
+    if (!m_characterContent.empty()) {
+        m_token = htmlToken(m_characterContent, htmlToken::text);
+        m_characterContent.clear();
+        textNode(m_token);
+    }
+}
+
+//---------------------------------------------------------------------------
 void htmlParser::emitTag()
 {
+    emitText();
+
     if (!m_currentTagName.empty()) {
         m_token = htmlToken(m_currentTagName, htmlToken::tag, m_currentTagKind);
         m_token.setAttributes(m_currentAttributes);
@@ -78,9 +90,13 @@ void htmlParser::emitTag()
 //---------------------------------------------------------------------------
 void htmlParser::emitDoctype()
 {
+    emitText();
+
     m_token = htmlToken("doctype", htmlToken::doctype, htmlToken::selfClose);
     openingTag(m_token);
-    closingTag(m_token);
+
+    // Not sure if we must emit a close tag for a DOCTYPE ??
+    // closingTag(m_token);
 }
 
 //---------------------------------------------------------------------------
@@ -181,6 +197,7 @@ void htmlParser::stateTagOpen()
 
     if (::isalpha(m_current)) {
         m_currentTagName = ::tolower(m_current);
+        m_currentTagKind = htmlToken::open;
 
         changeState(&htmlParser::stateTagName);
         return;
@@ -499,6 +516,7 @@ void htmlParser::stateAfterAttributeName()
     if (::isalpha(m_current)) {
         emitAttributeWithoutValue();
         m_currentAttrName = ::tolower(m_current);
+        changeState(&htmlParser::stateAttributeName);
         return;
     }
 
@@ -521,6 +539,7 @@ void htmlParser::stateAfterAttributeName()
         case '\0':
             emitAttributeWithoutValue();
             m_currentAttrName = HTML_INVALID_CHAR;
+            changeState(&htmlParser::stateAttributeName);
             break;
 
         case '\'':

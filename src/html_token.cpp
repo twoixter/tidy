@@ -29,7 +29,7 @@ ostream &htmlToken::display(ostream &_out) const
 {
     switch (m_type) {
         case text:
-            _out << "[" << data() << "]";
+            _out << data();
             break;
 
         case tag:
@@ -44,7 +44,6 @@ ostream &htmlToken::display(ostream &_out) const
                     _out << " " << iter->first << "=\"" << iter->second << "\"";
                 }
             }
-
             if (isSelfClose()) _out << "/";
             _out << ">";
             break;

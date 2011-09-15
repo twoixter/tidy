@@ -58,12 +58,12 @@ private:
 
     virtual void openingTag(const htmlToken &_token)
     {
-        cout << ">> " << _token << endl;
+        cout << _token << endl;
     }
 
     virtual void closingTag(const htmlToken &_token)
     {
-        cout << "<< " << _token << endl;
+        cout << _token << endl;
     }
 
     virtual void endDocument()
@@ -71,6 +71,7 @@ private:
         cout << "**** CLOSING DOCUMENT PARSING ****" << endl;
     }
 
+    void emitText();
     void emitTag();
     void emitDoctype();
     void emitAttribute();
