@@ -43,7 +43,7 @@ private:
 
     inline const string levelstr(int _plus = 0)
     {
-        return string((m_level + _plus) * 4, ' ');
+        return m_level + _plus > 0 ? string((m_level + _plus - 1) * 4, ' ') : string();
     }
 
     int m_level;

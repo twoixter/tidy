@@ -56,9 +56,8 @@ void tidyParser::openingTag(const htmlToken &_token)
 {
     if (_token == "script") m_inScript = true;
     if (_token == "style")  m_inStyle = true;
-    m_level++;
-
     cout << levelstr() << ansi::white << _token << ansi::reset << endl;
+    if (_token.type() == htmlToken::tag) m_level++;
 }
 
 void tidyParser::textNode(const htmlToken &_token)
@@ -72,11 +71,10 @@ void tidyParser::textNode(const htmlToken &_token)
 
 void tidyParser::closingTag(const htmlToken &_token)
 {
+    m_level--;
     if (!_token.isSelfClose()) {
         cout << levelstr() << ansi::white << _token << ansi::reset << endl;
     }
-
     if (_token == "script") m_inScript = false;
     if (_token == "style")  m_inStyle = false;
-    m_level--;
 }

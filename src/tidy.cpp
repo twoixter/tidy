@@ -34,6 +34,8 @@ using namespace std;
 int main(int argv, char *argc[])
 {
     tidyParser p;
+
+    // Nice and simple are we... :-D
     cin >> p;
 
 	return 0;

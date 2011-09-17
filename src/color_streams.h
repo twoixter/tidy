@@ -27,12 +27,20 @@
 #define TIDY_COLORSTREAMS_H
 
 #include <iostream>
+#include <unistd.h>   // For isatty
 
 #define IMPLEMENT(color) \
     inline std::ostream & (color)(ostream &_out) \
-    { _out << _##color; }
+    { if (can_colorize) _out << _##color; return _out; }
 
 namespace ansi {
+
+    /**
+     * Since we are using color_streams.h as a header to be inlined, we need
+     * to declare can_colorize as a weak symbol so that there is no complains
+     * by the linker. However, __attribute__ is a GNU extension.
+     */
+    bool can_colorize __attribute__((weak)) = isatty(STDOUT_FILENO);
 
     const char _reset[]   = "\x1b[0m";
 
@@ -44,6 +52,8 @@ namespace ansi {
     const char _cyan[]    = "\x1b[36m";
     const char _white[]   = "\x1b[37m";
 
+    IMPLEMENT(reset)
+
     IMPLEMENT(red)
     IMPLEMENT(green)
     IMPLEMENT(yellow)
@@ -51,9 +61,6 @@ namespace ansi {
     IMPLEMENT(magenta)
     IMPLEMENT(cyan)
     IMPLEMENT(white)
-
-    IMPLEMENT(reset)
 }
-
 
 #endif
