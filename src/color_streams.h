@@ -1,6 +1,8 @@
 /*
  * Copyright (c) 2011 Jose Miguel Pérez, Twoixter S.L.
  *
+ * Standard disclaimer follows:
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
  * in the Software without restriction, including without limitation the rights
@@ -21,19 +23,37 @@
  *
  */
 
-#ifndef TIDY_HTMLSAXEMITTER_H
-#define TIDY_HTMLSAXEMITTER_H
+#ifndef TIDY_COLORSTREAMS_H
+#define TIDY_COLORSTREAMS_H
 
-#include "html_token.h"
+#include <iostream>
 
-class htmlSAXEmitter {
-public:
-    virtual void startDocument() {}
-    virtual void openingTag(const htmlToken &_token) {}
-    virtual void textNode(const htmlToken &_token) {}
-    virtual void closingTag(const htmlToken &_token) {}
-    virtual void endDocument() {}
-};
+#define IMPLEMENT(color) \
+    inline std::ostream & (color)(ostream &_out) \
+    { _out << _##color; }
+
+namespace ansi {
+
+    const char _reset[]   = "\x1b[0m";
+
+    const char _red[]     = "\x1b[31m";
+    const char _green[]   = "\x1b[32m";
+    const char _yellow[]  = "\x1b[33m";
+    const char _blue[]    = "\x1b[34m";
+    const char _magenta[] = "\x1b[35m";
+    const char _cyan[]    = "\x1b[36m";
+    const char _white[]   = "\x1b[37m";
+
+    IMPLEMENT(red)
+    IMPLEMENT(green)
+    IMPLEMENT(yellow)
+    IMPLEMENT(blue)
+    IMPLEMENT(magenta)
+    IMPLEMENT(cyan)
+    IMPLEMENT(white)
+
+    IMPLEMENT(reset)
+}
 
 
-#endif  // TIDY_HTMLSAXEMITTER_H
+#endif

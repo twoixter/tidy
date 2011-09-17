@@ -26,49 +26,46 @@
 
 #define HTML_INVALID_CHAR    '?'
 
-#include "html_sax_emitter.h"
 #include "ncstring.h"
 #include <iostream>
 
+#include "html_token.h"
+
 using namespace std;
 
-class htmlParser : public htmlSAXEmitter {
+class htmlParser {
 public:
-
     htmlParser()
         : m_state(&htmlParser::stateData)
         , m_currentStream(NULL)
         , m_currentTagKind(htmlToken::open)
     {}
 
+    virtual ~htmlParser()
+    {}
+
     void parse(istream &in);
 
 private:
 
-    // Events for the SAX Emitter
     virtual void startDocument()
     {
-        cout << "**** STARTING DOCUMENT PARSING ****" << endl;
     }
 
     virtual void textNode(const htmlToken &_token)
     {
-        cout << _token << endl;
     }
 
     virtual void openingTag(const htmlToken &_token)
     {
-        cout << _token << endl;
     }
 
     virtual void closingTag(const htmlToken &_token)
     {
-        cout << _token << endl;
     }
 
     virtual void endDocument()
     {
-        cout << "**** CLOSING DOCUMENT PARSING ****" << endl;
     }
 
     void emitText();
@@ -86,6 +83,7 @@ private:
 
     ncstring     m_characterContent;
     ncstring     m_currentTagName;
+    ncstring     m_lastTagName;
     ncstring     m_currentAttrName;
     ncstring     m_currentAttrValue;
 
@@ -104,10 +102,30 @@ private:
         reconsume();
     }
 
+    inline stateFunc_t nextStateForLastTag()
+    {
+        if (m_lastTagName == "script") {
+            return &htmlParser::stateScriptData;
+        }
+        return &htmlParser::stateData;
+    }
+
     inline void addToContent(char _c = 0, bool _clear = false)
     {
         if (_clear) m_characterContent.clear();
         m_characterContent.push_back(_c ? _c : m_current);
+    }
+
+    inline void addToContent(const char *_str, bool _clear = false)
+    {
+        if (_clear) m_characterContent.clear();
+        m_characterContent.append(_str);
+    }
+
+    inline void addToContent(const ncstring &_str, bool _clear = false)
+    {
+        if (_clear) m_characterContent.clear();
+        m_characterContent.append(_str);
     }
 
     // WARNING: Curves ahead... :-)

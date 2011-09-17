@@ -1,6 +1,8 @@
 /*
  * Copyright (c) 2011 Jose Miguel Pérez, Twoixter S.L.
  *
+ * Standard disclaimer follows:
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
  * in the Software without restriction, including without limitation the rights
@@ -21,19 +23,32 @@
  *
  */
 
-#ifndef TIDY_HTMLSAXEMITTER_H
-#define TIDY_HTMLSAXEMITTER_H
+#ifndef TIDY_PARSER_H
+#define TIDY_PARSER_H
 
-#include "html_token.h"
+#include "html_stream_parser.h"
 
-class htmlSAXEmitter {
+class tidyParser : public htmlParser {
+
 public:
-    virtual void startDocument() {}
-    virtual void openingTag(const htmlToken &_token) {}
-    virtual void textNode(const htmlToken &_token) {}
-    virtual void closingTag(const htmlToken &_token) {}
-    virtual void endDocument() {}
+    tidyParser();
+    virtual ~tidyParser();
+
+private:
+    virtual void startDocument();
+    virtual void openingTag(const htmlToken &_token);
+    virtual void textNode(const htmlToken &_token);
+    virtual void closingTag(const htmlToken &_token);
+    virtual void endDocument();
+
+    inline const string levelstr(int _plus = 0)
+    {
+        return string((m_level + _plus) * 4, ' ');
+    }
+
+    int m_level;
+    bool m_inScript;
+    bool m_inStyle;
 };
 
-
-#endif  // TIDY_HTMLSAXEMITTER_H
+#endif

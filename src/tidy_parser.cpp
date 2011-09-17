@@ -1,6 +1,8 @@
 /*
  * Copyright (c) 2011 Jose Miguel Pérez, Twoixter S.L.
  *
+ * Standard disclaimer follows:
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
  * in the Software without restriction, including without limitation the rights
@@ -21,19 +23,60 @@
  *
  */
 
-#ifndef TIDY_HTMLSAXEMITTER_H
-#define TIDY_HTMLSAXEMITTER_H
+#include <iostream>
+#include "tidy_parser.h"
+#include "color_streams.h"
 
-#include "html_token.h"
+using namespace std;
 
-class htmlSAXEmitter {
-public:
-    virtual void startDocument() {}
-    virtual void openingTag(const htmlToken &_token) {}
-    virtual void textNode(const htmlToken &_token) {}
-    virtual void closingTag(const htmlToken &_token) {}
-    virtual void endDocument() {}
-};
+tidyParser::tidyParser()
+    : htmlParser()
+    , m_level(0)
+    , m_inScript(false)
+    , m_inStyle(false)
+{
+}
 
+tidyParser::~tidyParser()
+{
+}
 
-#endif  // TIDY_HTMLSAXEMITTER_H
+void tidyParser::startDocument()
+{
+    m_level = 0;
+    m_inScript = false;
+    m_inStyle = false;
+}
+
+void tidyParser::endDocument()
+{
+}
+
+void tidyParser::openingTag(const htmlToken &_token)
+{
+    if (_token == "script") m_inScript = true;
+    if (_token == "style")  m_inStyle = true;
+    m_level++;
+
+    cout << levelstr() << ansi::white << _token << ansi::reset << endl;
+}
+
+void tidyParser::textNode(const htmlToken &_token)
+{
+    if (m_inScript || m_inStyle) {
+        cout << levelstr(1) << _token.name() << endl;
+    } else {
+        cout << levelstr(1) << _token << endl;
+    }
+}
+
+void tidyParser::closingTag(const htmlToken &_token)
+{
+    if (!_token.isSelfClose()) {
+        cout << levelstr() << ansi::white << _token << ansi::reset << endl;
+    }
+
+    if (_token == "script") m_inScript = false;
+    if (_token == "style")  m_inStyle = false;
+    m_level--;
+}

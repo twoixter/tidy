@@ -64,6 +64,11 @@ public:
         return m_data;
     }
 
+    bool operator == (const ncstring &_str) const
+    {
+        return m_data == _str;
+    }
+
     template <typename _T>
     void setName(const _T &_name)
     {

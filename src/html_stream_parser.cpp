@@ -56,6 +56,7 @@ void htmlParser::emitTag()
     if (!m_currentTagName.empty()) {
         m_token = htmlToken(m_currentTagName, htmlToken::tag, m_currentTagKind);
         m_token.setAttributes(m_currentAttributes);
+        m_lastTagName = m_currentTagName;
         m_currentTagName.clear();
         m_currentAttributes.clear();
 
@@ -177,8 +178,28 @@ void htmlParser::stateRAWTEXT()
 }
 
 //---------------------------------------------------------------------------
+//! OK
 void htmlParser::stateScriptData()
 {
+#ifdef DEBUG
+    cout << "STATE: stateScriptData" << endl;
+    cout << "CURRENT CHAR: " << m_current << endl;
+#endif
+
+    switch (m_current) {
+        case '<':
+            changeState(&htmlParser::stateScriptDataLessThanSign);
+            break;
+
+        case '\0':
+            // TODO: Should be error
+            addToContent(HTML_INVALID_CHAR);
+            break;
+
+        default:
+            addToContent();
+            break;
+    }
 }
 
 //---------------------------------------------------------------------------
@@ -226,6 +247,7 @@ void htmlParser::stateTagOpen()
 }
 
 //---------------------------------------------------------------------------
+//! OK
 void htmlParser::stateEndTagOpen()
 {
 #ifdef DEBUG
@@ -273,7 +295,7 @@ void htmlParser::stateTagName()
 
         case '>':
             emitTag();
-            changeState(&htmlParser::stateData);
+            changeState(nextStateForLastTag());
             break;
 
         case '\0':
@@ -318,18 +340,95 @@ void htmlParser::stateRAWTEXTEndTagName()
 }
 
 //---------------------------------------------------------------------------
+//! OK
 void htmlParser::stateScriptDataLessThanSign()
 {
+#ifdef DEBUG
+    cout << "STATE: stateScriptDataLessThanSign" << endl;
+    cout << "CURRENT CHAR: " << m_current << endl;
+#endif
+
+    switch (m_current) {
+        case '/':
+            changeState(&htmlParser::stateScriptDataEndTagOpen);
+            break;
+
+        case '!':
+            addToContent('<');
+            addToContent('!');
+            changeState(&htmlParser::stateScriptDataEscapeStart);
+            break;
+
+        default:
+            addToContent('<');
+            changeStateReconsuming(&htmlParser::stateScriptData);
+            break;
+    }
 }
 
 //---------------------------------------------------------------------------
 void htmlParser::stateScriptDataEndTagOpen()
 {
+#ifdef DEBUG
+    cout << "STATE: stateScriptDataEndTagOpen" << endl;
+    cout << "CURRENT CHAR: " << m_current << endl;
+#endif
+
+    // We use the currentTagName as a temporary
+    if (::isalpha(m_current)) {
+        m_currentTagName = ::tolower(m_current);
+        m_currentTagKind = htmlToken::close;
+        changeState(&htmlParser::stateScriptDataEndTagName);
+        return;
+    }
+    addToContent("</");
+    changeStateReconsuming(&htmlParser::stateScriptData);
 }
 
 //---------------------------------------------------------------------------
 void htmlParser::stateScriptDataEndTagName()
 {
+#ifdef DEBUG
+    cout << "STATE: stateScriptDataEndTagName" << endl;
+    cout << "CURRENT CHAR: " << m_current << endl;
+#endif
+
+    if (::isalpha(m_current)) {
+        m_currentTagName += ::tolower(m_current);
+        return;
+    }
+
+    if (::isspace(m_current)) {
+        if (m_currentTagName == m_lastTagName) {
+            changeState(&htmlParser::stateBeforeAttributeName);
+            return;
+        }
+
+        // OK! No return here. This is so that we treat the current character
+        // as the "anything else" state
+    }
+
+    switch (m_current) {
+        case '/':
+            if (m_currentTagName == m_lastTagName) {
+                changeState(&htmlParser::stateSelfClosingStartTag);
+                return;
+            }
+            break;
+
+        case '>':
+            if (m_currentTagName == m_lastTagName) {
+                emitTag();
+                changeState(&htmlParser::stateData);
+                return;
+            }
+            break;
+    }
+
+    // The "Anything else" goes here... :-)
+    addToContent("</");
+    addToContent(m_currentTagName);
+    changeStateReconsuming(&htmlParser::stateScriptData);
 }
 
 //---------------------------------------------------------------------------
@@ -427,7 +526,7 @@ void htmlParser::stateBeforeAttributeName()
 
         case '>':
             emitTag();
-            changeState(&htmlParser::stateData);
+            changeState(nextStateForLastTag());
             break;
 
 
@@ -482,7 +581,7 @@ void htmlParser::stateAttributeName()
         case '>':
             emitAttributeWithoutValue();
             emitTag();
-            changeState(&htmlParser::stateData);
+            changeState(nextStateForLastTag());
             break;
 
         case '\0':
@@ -533,7 +632,7 @@ void htmlParser::stateAfterAttributeName()
         case '>':
             emitAttributeWithoutValue();
             emitTag();
-            changeState(&htmlParser::stateData);
+            changeState(nextStateForLastTag());
             break;
 
         case '\0':
@@ -589,7 +688,7 @@ void htmlParser::stateBeforeAttributeValue()
             // TODO: Should be parse error
             emitAttributeWithoutValue();
             emitTag();
-            changeState(&htmlParser::stateData);
+            changeState(nextStateForLastTag());
             break;
 
         case '<':
@@ -681,7 +780,7 @@ void htmlParser::stateAttributeValueUnquoted()
         case '>':
             emitAttribute();
             emitTag();
-            changeState(&htmlParser::stateData);
+            changeState(nextStateForLastTag());
             break;
         
         // TODO: Character entities inside values
@@ -736,7 +835,7 @@ void htmlParser::stateAfterAttributeValueQuoted()
         case '>':
             emitAttribute();
             emitTag();
-            changeState(&htmlParser::stateData);
+            changeState(nextStateForLastTag());
             break;
         
         default:

@@ -27,13 +27,13 @@
 #include <iostream>
 #include <sstream>
 
-#include "html_stream_parser.h"
+#include "tidy_parser.h"
 
 using namespace std;
 
 int main(int argv, char *argc[])
 {
-    htmlParser p;
+    tidyParser p;
     cin >> p;
 
 	return 0;
